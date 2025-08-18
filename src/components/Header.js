@@ -1,31 +1,54 @@
-import { signOut } from 'firebase/auth';
-import React from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import React, { useEffect} from 'react';
 import { auth } from '../utils/firebase';
-import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useNavigate} from 'react-router-dom'; // 👈 1. Import useLocation
+import { useDispatch, useSelector } from 'react-redux';
+import { addUser, removeUser } from '../utils/userSlice';
+import { LOGO_IMG } from '../utils/constants';
+import { togglesearchgpt } from '../utils/gptSlice';
 
 const Header = () => {
-  const navigate=useNavigate();
-  const user=useSelector( store=>store.user);
-  const Handlesignout=()=>
-  {
-      signOut(auth).then(() => {
-      navigate("/");
-    
-}).catch((error) => {
-  // An error happened.
-});
-  }
+  const navigate = useNavigate();
+  const user = useSelector((store) => store.user);
+  const dispatch = useDispatch();
+
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        dispatch(addUser({ uid: user.uid, email: user.email, displayName: user.displayName }));
+      } else {
+        dispatch(removeUser());
+        navigate("/");
+      }
+    });
+    return () => unsubscribe();
+  }, [dispatch, navigate]);
+
+  const handleSignout = () => {
+    signOut(auth).catch((error) => console.error(error));
+  };
+  const Searchgpt = () => {
+    dispatch(togglesearchgpt());
+  };
+
+
   return (
-    <div className='p-2 px-8 flex justify-between'>
-      <img
-        className="w-44 p-2"
-        src="https://help.nflxext.com/helpcenter/OneTrust/oneTrust_production_2025-07-24/consent/87b6a5c0-0104-4e96-a291-092c11350111/019808e2-d1e7-7c0f-ad43-c485b7d9a221/logos/dd6b162f-1a32-456a-9cfe-897231c7763c/4345ea78-053c-46d2-b11e-09adaef973dc/Netflix_Logo_PMS.png"
-        alt="logo-img"
-      />
-      {user?.uid && (<div className='p-5 mx-1 my-2'>
-        <button className='bg-red-600 text-white p-2 rounded-md'onClick={Handlesignout}>Sign out</button>
-      </div>)}
+    <div 
+      className={'px-4 flex justify-between items-center fixed top-0 left-0 w-full z-50'}
+    >
+      <img className="w-44" src={LOGO_IMG} alt="logo-img" />
+      {user && (
+        <div className="flex items-center">
+          <button className='p-2 m-2 bg-purple-600 text-white rounded-md' onClick={Searchgpt}>Search Gpt</button>
+          <button
+            className="bg-red-600 text-white p-2 rounded-md cursor-pointer hover:bg-red-700"
+            onClick={handleSignout}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
     </div>
   );
 };
